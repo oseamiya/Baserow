@@ -133,7 +133,7 @@ public class Baserow extends AndroidNonvisibleComponent {
     }
     @SimpleFunction
     public void GetColumn(String columnName, int page, int size){
-        String url = accessUrl + "api/database/rows/table/" + tableId + "/?user_field_names=true" + "/?page=" + page + "?size=" + size;
+        String url = accessUrl + "api/database/rows/table/" + tableId + "/?user_field_names=true" + "?page=" + page + "?size=" + size;
         utility.DoHttpRequest(url, token, new Callback() {
             @Override
             public void onError(String error) {
@@ -172,7 +172,7 @@ public class Baserow extends AndroidNonvisibleComponent {
     }
     @SimpleFunction
     public void GetAllRows(int page, int size){
-        String url = accessUrl + "api/database/rows/table/" + tableId + "/?user_field_names=true" + "/?page=" + page + "?size=" + size;
+        String url = accessUrl + "api/database/rows/table/" + tableId + "/?user_field_names=true" + "?page=" + page + "?size=" + size;
         utility.DoHttpRequest(url, token, new Callback() {
             @Override
             public void onError(String error) {
@@ -222,7 +222,7 @@ public class Baserow extends AndroidNonvisibleComponent {
     }
     @SimpleEvent
     public void GotRow(YailList values , String response){
-        EventDispatcher.dispatchEvent(this , "GotRow" , values);
+        EventDispatcher.dispatchEvent(this , "GotRow" , values, response);
     }
     @SimpleFunction
     public void GetRow(int rowId){
