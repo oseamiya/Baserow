@@ -129,7 +129,7 @@ public class Baserow extends AndroidNonvisibleComponent {
     }
     @SimpleEvent
     public void GotColumn(YailList values, String response){
-        EventDispatcher.dispatchEvent(this , "GotColumn" , values);
+        EventDispatcher.dispatchEvent(this , "GotColumn" , values, response);
     }
     @SimpleFunction
     public void GetColumn(String columnName, int page, int size){
