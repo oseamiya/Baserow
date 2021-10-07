@@ -210,7 +210,7 @@ public class Baserow extends AndroidNonvisibleComponent {
                             }
                             arrayLists.add(YailList.makeList(arrayList2));
                         }
-                        GotAllRows(YailList.makeList(arrayLists) , arrayLists.size() + 1 , result);
+                        GotAllRows(YailList.makeList(arrayLists) , arrayLists.size() , result);
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
