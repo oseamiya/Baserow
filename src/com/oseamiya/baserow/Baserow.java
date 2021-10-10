@@ -423,6 +423,10 @@ public class Baserow extends AndroidNonvisibleComponent {
             }
         });
     }
+    @SimpleEvent
+    public void TokenVerified(boolean isVerified, String token){
+        EventDispatcher.dispatchEvent(this , "TokenVerified", isVerified, token);
+    }
     @SimpleFunction
     public void VerifyToken(String token){
         String url = accessUrl + "api/user/token-verify/";
@@ -433,7 +437,7 @@ public class Baserow extends AndroidNonvisibleComponent {
                 activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        OnError(error , "VerifyToken");
+                        TokenVerified(false , token);
                     }
                 });
             }
@@ -445,8 +449,12 @@ public class Baserow extends AndroidNonvisibleComponent {
                    public void run() {
                        try {
                            JSONObject jsonObject = new JSONObject(result);
-                           String awtToken = jsonObject.getString("token");
-                           TokenGenerated(awtToken , result);
+                           String jwtToken = jsonObject.getString("token");
+                           if(token.equals(jwtToken)){
+                               TokenVerified(true, jwtToken);
+                           }else{
+                               TokenVerified(false, token);
+                           }
                        } catch (JSONException e) {
                            e.printStackTrace();
                            OnError(e.getClass().getCanonicalName() , "VerifyToken");
