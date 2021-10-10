@@ -1,37 +1,54 @@
 package com.oseamiya.baserow;
+
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
-
-
 public class Utility {
-    public void DoHttpRequest(String urls ,String token,Callback callback ){
-        (new Thread(() -> {
-            HttpURLConnection http = null;
-            try {
-                URL url = new URL(urls);
-                http = (HttpURLConnection) url.openConnection();
-                http.setRequestProperty("Authorization", "Token " + token);
-                int responseCode = http.getResponseCode();
-                System.out.println(http.getResponseCode() + " " + http.getResponseMessage());
-                if(responseCode / 100 == 2){
-                    InputStream inputStream = http.getInputStream();
-                    callback.onSuccess(convertStreamToString(inputStream));
-                }else {
-                    callback.onError(convertStreamToString(http.getErrorStream()));
-                }
-            } catch (Exception e){
-                callback.onError(e.getClass().getCanonicalName());
-            } finally {
-                if (http != null) {
-                    http.disconnect();
+    public void DoHttpRequest(String urls, String token, Callback callback) {
+        (new Thread(new Runnable() {
+            @Override
+            public void run() {
+                HttpURLConnection http = null;
+                InputStream inputStream = null;
+                try {
+                    URL url = new URL(urls);
+                    http = (HttpURLConnection) url.openConnection();
+                    http.setRequestProperty("Authorization", "Token " + token);
+                    int responseCode = http.getResponseCode();
+                    System.out.println(http.getResponseCode() + " " + http.getResponseMessage());
+                    if (responseCode / 100 == 2) {
+                        inputStream = http.getInputStream();
+                        String res = Utility.this.convertStreamToString(inputStream);
+                        if (res != null) {
+                            callback.onSuccess(res);
+                        }
+                    } else {
+                        String res = Utility.this.convertStreamToString(http.getErrorStream());
+                        if (res != null) {
+                            callback.onError(res);
+                        }
+                    }
+                } catch (Exception e) {
+                    callback.onError(e.getClass().getCanonicalName());
+                } finally {
+                    if (http != null) {
+                        http.disconnect();
+                    }
+                    if (inputStream != null){
+                        try {
+                            inputStream.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
             }
         })).start();
 
     }
+
     public void PostHttpRequest(String urls, String token, String jsonString, String method, String jwtToken, Callback callback) {
         (new Thread(new Runnable() {
             @Override
@@ -61,29 +78,41 @@ public class Utility {
                     int responseCode = httpURLConnection.getResponseCode();
                     if (responseCode / 100 == 2) {
                         inputStream = new BufferedInputStream(httpURLConnection.getInputStream());
-                        callback.onSuccess(Utility.this.convertStreamToString(inputStream));
+                        String res = convertStreamToString(inputStream);
+                        if(res != null){
+                            callback.onSuccess(res);
+                        }
                     } else {
-                        callback.onError(Utility.this.convertStreamToString(httpURLConnection.getErrorStream()));
+                        String res = convertStreamToString(httpURLConnection.getErrorStream());
+                        if(res != null){
+                            callback.onError(res);
+                        }
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                     callback.onError(e.getClass().getCanonicalName());
                 } finally {
                     try {
-                        inputStream.close();
+                        if(inputStream != null) {
+                            inputStream.close();
+                        }
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-                    httpURLConnection.disconnect();
+                    if(httpURLConnection != null) {
+                        httpURLConnection.disconnect();
+                    }
                 }
             }
         })).start();
     }
+    
+
     private String convertStreamToString(InputStream is) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte[] buffer = new byte[1024];
         try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            byte[] buffer = new byte[1024];
-            int len = 0;
+            int len;
             while ((len = is.read(buffer)) != -1) {
                 baos.write(buffer, 0, len);
             }
@@ -91,8 +120,20 @@ public class Utility {
 
         } catch (IOException e) {
             e.printStackTrace();
-            return "Error";
+        } finally {
+			if(is != null) {
+                try {
+                    is.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            try {
+                baos.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
+        return null;
     }
-
 }
