@@ -9,6 +9,7 @@ import com.google.appinventor.components.runtime.AndroidNonvisibleComponent;
 import com.google.appinventor.components.runtime.ComponentContainer;
 import com.google.appinventor.components.runtime.EventDispatcher;
 import com.google.appinventor.components.runtime.util.YailList;
+import com.google.appinventor.components.runtime.errors.YailRuntimeError;
 
 import android.content.Context;
 import android.app.Activity;
@@ -17,15 +18,16 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
-import java.util.Iterator;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
 
 
 public class Baserow extends AndroidNonvisibleComponent {
     private final Context context;
     private final Activity activity;
     private int tableId;
-    private String token;
+    private String apiToken;
     private final Utility utility;
     private String accessUrl;
 
@@ -50,7 +52,7 @@ public class Baserow extends AndroidNonvisibleComponent {
     @DesignerProperty()
     @SimpleProperty
     public void Token(String tok) {
-        token = tok;
+        apiToken = tok;
     }
     @SimpleEvent
     public void OnFieldsListed(YailList ids , YailList names , YailList types, YailList isPrimary ,int tableId ){
@@ -67,7 +69,7 @@ public class Baserow extends AndroidNonvisibleComponent {
     @SimpleFunction
     public void GetCell(int rowId , String columnName){
         String url = accessUrl + "api/database/rows/table/" + tableId + "/" + rowId + "/?user_field_names=true";
-        utility.DoHttpRequest(url, token, new Callback() {
+        utility.DoHttpRequest(url, apiToken, new Callback() {
             @Override
             public void onError(String error) {
                 activity.runOnUiThread(new Runnable() {
@@ -97,7 +99,7 @@ public class Baserow extends AndroidNonvisibleComponent {
     @SimpleFunction
     public void GetListFields() {
         String urlRequired = accessUrl + "api/database/fields/table/" + Integer.toString(tableId) + "/";
-        utility.DoHttpRequest(urlRequired, token,  new Callback() {
+        utility.DoHttpRequest(urlRequired, apiToken,  new Callback() {
             @Override
             public void onError(String error) {
                 activity.runOnUiThread(() -> OnError(error , "GetListFields"));
@@ -129,12 +131,12 @@ public class Baserow extends AndroidNonvisibleComponent {
     }
     @SimpleEvent
     public void GotColumn(YailList values, String response){
-        EventDispatcher.dispatchEvent(this , "GotColumn" , values, response);
+        EventDispatcher.dispatchEvent(this , "GotColumn" , values , response);
     }
     @SimpleFunction
     public void GetColumn(String columnName, int page, int size){
         String url = accessUrl + "api/database/rows/table/" + tableId + "/?user_field_names=true" + "&page=" + page + "&size=" + size;
-        utility.DoHttpRequest(url, token, new Callback() {
+        utility.DoHttpRequest(url, apiToken, new Callback() {
             @Override
             public void onError(String error) {
                 activity.runOnUiThread(new Runnable() {
@@ -173,7 +175,7 @@ public class Baserow extends AndroidNonvisibleComponent {
     @SimpleFunction
     public void GetAllRows(int page, int size){
         String url = accessUrl + "api/database/rows/table/" + tableId + "/?user_field_names=true" + "&page=" + page + "&size=" + size;
-        utility.DoHttpRequest(url, token, new Callback() {
+        utility.DoHttpRequest(url, apiToken, new Callback() {
             @Override
             public void onError(String error) {
                 activity.runOnUiThread(new Runnable() {
@@ -227,7 +229,7 @@ public class Baserow extends AndroidNonvisibleComponent {
     @SimpleFunction
     public void GetRow(int rowId){
         String url = accessUrl + "api/database/rows/table/" + tableId + "/" + rowId + "/?user_field_names=true";
-        utility.DoHttpRequest(url, token, new Callback() {
+        utility.DoHttpRequest(url, apiToken, new Callback() {
             @Override
             public void onError(String error) {
                 activity.runOnUiThread(() -> OnError(error , "GetRow"));
@@ -241,15 +243,15 @@ public class Baserow extends AndroidNonvisibleComponent {
                         Iterator<String> iterator = jsonObject.keys();
                         ArrayList<String> arrayList = new ArrayList<>();
                         for(Iterator<String> it = iterator; it.hasNext();){
-                            arrayList.add(it.next());
+                            arrayList.add(jsonObject.getString(it.next()));
                         }
-                        arrayList.remove("id");
-                        arrayList.remove("order");
+                        arrayList.remove(arrayList.get(0));
+                        arrayList.remove(arrayList.get(0)); // Actually i did it two times so that first two word of origin arraylist removes
                         GotRow(YailList.makeList(arrayList) , result);
                     } catch (JSONException e) {
                         e.printStackTrace();
+                        OnError(e.getClass().getCanonicalName() , "GetRow");
                     }
-
                 });
             }
         });
@@ -269,7 +271,7 @@ public class Baserow extends AndroidNonvisibleComponent {
             stringBuilder.append("\"").append(list[i]).append("\"").append(":").append("\"").append(value[i]).append("\"").append(",");
         }
         stringBuilder.replace(stringBuilder.length() - 1 , stringBuilder.length() , "}");
-        utility.PostHttpRequest(url, token, stringBuilder.toString(), "POST", new Callback() {
+        utility.PostHttpRequest(url, apiToken, stringBuilder.toString(), "POST","", new Callback() {
             @Override
             public void onError(String error) {
                 activity.runOnUiThread(() -> OnError(error , "CreateRow"));
@@ -296,7 +298,7 @@ public class Baserow extends AndroidNonvisibleComponent {
             stringBuilder.append("\"").append(list[i]).append("\"").append(":").append("\"").append(value[i]).append("\"").append(",");
         }
         stringBuilder.replace(stringBuilder.length() - 1 , stringBuilder.length() , "}");
-        utility.PostHttpRequest(url, token, stringBuilder.toString(), "PATCH", new Callback() {
+        utility.PostHttpRequest(url, apiToken, stringBuilder.toString(), "PATCH","" ,  new Callback() {
             @Override
             public void onError(String error) {
                 activity.runOnUiThread(() -> OnError(error , "UpdateRow"));
@@ -315,10 +317,15 @@ public class Baserow extends AndroidNonvisibleComponent {
     @SimpleFunction
     public void MoveRow(int rowId , int beforeId){
         String url = accessUrl + "api/database/rows/table/"+ tableId + "/" + rowId + "/move/?user_field_names=true&before_id=" + beforeId;
-        utility.PostHttpRequest(url, token, "", "PATCH", new Callback() {
+        utility.PostHttpRequest(url, apiToken, "", "PATCH", "", new Callback() {
             @Override
             public void onError(String error) {
-                activity.runOnUiThread(() -> OnError(error , "MoveRow"));
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        OnError(error, "MoveRow");
+                    }
+                });
             }
 
             @Override
@@ -334,7 +341,7 @@ public class Baserow extends AndroidNonvisibleComponent {
     @SimpleFunction
     public void DeleteRow(int rowId){
         String url = accessUrl + "api/database/rows/table/" + tableId + "/" + rowId + "/";
-        utility.PostHttpRequest(url, token, "", "DELETE", new Callback() {
+        utility.PostHttpRequest(url, apiToken, "", "DELETE","", new Callback() {
             @Override
             public void onError(String error) {
                 activity.runOnUiThread(() -> OnError(error , "DeleteRow"));
@@ -346,4 +353,160 @@ public class Baserow extends AndroidNonvisibleComponent {
             }
         });
     }
+    @SimpleEvent
+    public void TokenGenerated(String token, String response){
+        EventDispatcher.dispatchEvent(this, "TokenGenerated" , token, response);
+    }
+    @SimpleFunction
+    public void GenerateToken(String username, String password){
+        String url = accessUrl + "api/user/token-auth/";
+        String jsonWithUserAndPass = "{" + "\"username\"" + ":" + "\"" + username + "\"," + "\"password\": \"" + password + "\"}";
+        utility.PostHttpRequest(url, apiToken, jsonWithUserAndPass, "POST","" , new Callback() {
+            @Override
+            public void onError(String error) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        OnError(error , "GenerateToken");
+                    }
+                });
+            }
+
+            @Override
+            public void onSuccess(String result) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            JSONObject jsonObject = new JSONObject(result);
+                            String awtToken = jsonObject.getString("token");
+                            TokenGenerated(awtToken , result);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                            OnError(e.getClass().getCanonicalName() , "GenerateToken");
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    @SimpleFunction
+    public void RefreshToken(String token){
+        String url = accessUrl + "api/user/token-refresh/";
+        String jsonWithToken = "{" + "\"token\":" + "\"" + token + "\"" + "}";
+        utility.PostHttpRequest(url, apiToken, jsonWithToken, "POST","" ,  new Callback() {
+            @Override
+            public void onError(String error) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        OnError(error , "RefreshToken");
+                    }
+                });
+            }
+            @Override
+            public void onSuccess(String result) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            JSONObject jsonObject = new JSONObject(result);
+                            String awtToken = jsonObject.getString("token");
+                            TokenGenerated(awtToken , result);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                            OnError(e.getClass().getCanonicalName() , "RefreshToken");
+                        }
+                    }
+                });
+
+            }
+        });
+    }
+    @SimpleEvent
+    public void TokenVerified(boolean isVerified, String token){
+        EventDispatcher.dispatchEvent(this , "TokenVerified", isVerified, token);
+    }
+    @SimpleFunction
+    public void VerifyToken(String token){
+        String url = accessUrl + "api/user/token-verify/";
+        String jsonWithToken = "{" + "\"token\":" + "\"" + token + "\"" + "}";
+        utility.PostHttpRequest(url, apiToken, jsonWithToken, "POST","" , new Callback() {
+            @Override
+            public void onError(String error) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        TokenVerified(false , token);
+                    }
+                });
+            }
+
+            @Override
+            public void onSuccess(String result) {
+               activity.runOnUiThread(new Runnable() {
+                   @Override
+                   public void run() {
+                       try {
+                           JSONObject jsonObject = new JSONObject(result);
+                           String jwtToken = jsonObject.getString("token");
+                           if(token.equals(jwtToken)){
+                               TokenVerified(true, jwtToken);
+                           }else{
+                               TokenVerified(false, token);
+                           }
+                       } catch (JSONException e) {
+                           e.printStackTrace();
+                           OnError(e.getClass().getCanonicalName() , "VerifyToken");
+                       }
+                   }
+               });
+            }
+        });
+    }
+    @SimpleEvent
+    public void FileUploadedByUrl(int size, String url, String mimeType , boolean isImage , String name, String originalName ,String response){
+        EventDispatcher.dispatchEvent(this , "FileUploadedByUrl" , size, url, mimeType, isImage, name, originalName, response);
+    }
+    @SimpleFunction
+    public void UploadFileByUrl(String token , String fileUrl){
+        String url = accessUrl +"api/user-files/upload-via-url/";
+        String jsonFileUrl = "{\"url\":\"" + fileUrl + "\"}";
+        utility.PostHttpRequest(url, "", jsonFileUrl, "POST", token, new Callback() {
+            @Override
+            public void onError(String error) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        OnError(error , "UploadFileByUrl");
+                    }
+                });
+            }
+
+            @Override
+            public void onSuccess(String result) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            JSONObject jsonObject = new JSONObject(result);
+                            int sizeOfFile = jsonObject.getInt("size");
+                            String uploadedFileUrl = jsonObject.getString("url");
+                            String mimeType = jsonObject.getString("mime_type");
+                            boolean isImage = jsonObject.getBoolean("is_image");
+                            String name = jsonObject.getString("name");
+                            String originalName = jsonObject.getString("original_name");
+                            FileUploadedByUrl(sizeOfFile ,uploadedFileUrl,  mimeType , isImage, name, originalName, result);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                            OnError(e.getClass().getCanonicalName(), "UploadFileByUrl");
+                        }
+                    }
+                });
+            }
+        });
+    }
+	
+    
 }
