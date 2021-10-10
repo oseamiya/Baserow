@@ -32,42 +32,50 @@ public class Utility {
         })).start();
 
     }
-    public void PostHttpRequest(String urls , String token, String jsonString,String method, Callback callback){
-        (new Thread(() -> {
-            HttpURLConnection httpURLConnection = null;
-            InputStream inputStream = null;
-            try {
-                URL url = new URL(urls);
-                httpURLConnection = (HttpURLConnection) url.openConnection();
-                httpURLConnection.setConnectTimeout(5000);
-                httpURLConnection.setRequestProperty("Content-Type", "application/json");
-                httpURLConnection.setDoInput(true);
-                httpURLConnection.setDoOutput(true);
-                httpURLConnection.setRequestMethod(method);
-                httpURLConnection.setRequestProperty("Authorization", "Token " + token);
-                if(!jsonString.equals("")) {
-                    byte[] out = jsonString.getBytes(StandardCharsets.UTF_8);
-                    OutputStream outputStream = httpURLConnection.getOutputStream();
-                    outputStream.write(out);
-                    outputStream.close();
-                }
-                int responseCode = httpURLConnection.getResponseCode();
-                if(responseCode / 100 == 2){
-                     inputStream = new BufferedInputStream(httpURLConnection.getInputStream());
-                     callback.onSuccess(convertStreamToString(inputStream));
-                }else{
-                    callback.onError(convertStreamToString(httpURLConnection.getErrorStream()));
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                callback.onError(e.getClass().getCanonicalName());
-            } finally {
+    public void PostHttpRequest(String urls, String token, String jsonString, String method, String jwtToken, Callback callback) {
+        (new Thread(new Runnable() {
+            @Override
+            public void run() {
+                HttpURLConnection httpURLConnection = null;
+                InputStream inputStream = null;
                 try {
-                    inputStream.close();
-                } catch (IOException e) {
+                    URL url = new URL(urls);
+                    httpURLConnection = (HttpURLConnection) url.openConnection();
+                    httpURLConnection.setConnectTimeout(5000);
+                    httpURLConnection.setRequestProperty("Content-Type", "application/json");
+                    httpURLConnection.setDoInput(true);
+                    httpURLConnection.setDoOutput(true);
+                    httpURLConnection.setRequestMethod(method);
+                    if (!token.equals("")) {
+                        httpURLConnection.setRequestProperty("Authorization", "Token " + token);
+                    }
+                    if (!jwtToken.equals("")) {
+                        httpURLConnection.setRequestProperty("Authorization", "JWT " + jwtToken);
+                    }
+                    if (!jsonString.equals("")) {
+                        byte[] out = jsonString.getBytes(StandardCharsets.UTF_8);
+                        OutputStream outputStream = httpURLConnection.getOutputStream();
+                        outputStream.write(out);
+                        outputStream.close();
+                    }
+                    int responseCode = httpURLConnection.getResponseCode();
+                    if (responseCode / 100 == 2) {
+                        inputStream = new BufferedInputStream(httpURLConnection.getInputStream());
+                        callback.onSuccess(Utility.this.convertStreamToString(inputStream));
+                    } else {
+                        callback.onError(Utility.this.convertStreamToString(httpURLConnection.getErrorStream()));
+                    }
+                } catch (Exception e) {
                     e.printStackTrace();
+                    callback.onError(e.getClass().getCanonicalName());
+                } finally {
+                    try {
+                        inputStream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    httpURLConnection.disconnect();
                 }
-                httpURLConnection.disconnect();
             }
         })).start();
     }
