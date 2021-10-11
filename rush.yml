@@ -3,11 +3,11 @@
 
 ---
 name: Baserow           # Caution: DO NOT change the name.
-description: Baserow is a open-source airtable alternative. This extension was ceated by oseamiya. Visit oseamiya.tech for more informations.
+description: Baserow is an open-source airtable alternative. This extension is developed and maintained by oseamiya. This extension is open-sourced at <a href="https://github.com/oseamiya/Baserow">Here</a>
 
 version:
   number: auto        # Auto increments version number when built with '-r' ('--release') flag.
-  name: '1'
+  name: '3.0'
 
 authors:
   - oseamiya
