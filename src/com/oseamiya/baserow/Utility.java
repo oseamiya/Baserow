@@ -85,100 +85,89 @@ public class Utility {
         })).start();
     }
 
-    public void multipartRequest(String urlTo, Map<String, String> parmas, String filepath, String filefield, String fileMimeType, String jwtToken, Callback callback) throws Exception {
+    public void RequestMultipart(String filePath, String urls,  String jwtToken, String fieldName, Callback callback){
         new Thread(new Runnable() {
             @Override
             public void run() {
-                HttpURLConnection connection = null;
-                DataOutputStream outputStream = null;
-                InputStream inputStream = null;
-
-                String twoHyphens = "--";
-                String boundary = "*****" + Long.toString(System.currentTimeMillis()) + "*****";
-                String lineEnd = "\r\n";
-
-                String result = "";
-
-                int bytesRead, bytesAvailable, bufferSize;
-                byte[] buffer;
-                int maxBufferSize = 1 * 1024 * 1024;
-
-                String[] q = filepath.split("/");
-                int idx = q.length - 1;
-
+                String boundary = "==" + System.currentTimeMillis() + "===" ;
+                String LINE_FEED = "\r\n";
+                HttpURLConnection httpURLConnection = null;
+                OutputStream outputStream;
+                PrintWriter printWriter;
+                FileInputStream fileInputStream = null;
+                File file = new File(filePath);
                 try {
-                    File file = new File(filepath);
-                    FileInputStream fileInputStream = new FileInputStream(file);
+                    URL url = new URL(urls);
+                    httpURLConnection = (HttpURLConnection) url.openConnection();
+                    httpURLConnection.setDoOutput(true);
+                    httpURLConnection.setDoInput(true);
+                    httpURLConnection.setUseCaches(false);
+                    httpURLConnection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+                    httpURLConnection.setRequestProperty("Authorization", "JWT "+ jwtToken);
+                    httpURLConnection.setRequestMethod("POST");
+                    outputStream = httpURLConnection.getOutputStream();
+                    printWriter = new PrintWriter(new OutputStreamWriter(outputStream , StandardCharsets.UTF_8), true);
+                    String fileName = file.getName();
+                    printWriter.append("--").append(boundary).append(LINE_FEED);
+                    printWriter.append("Content-Disposition: form-data; name=\"").append(fieldName).append("\"; filename=\"").append(fileName).append("\"").append(LINE_FEED);
+                    // To get file mime type
+                    InputStream inputStreamForFileMime = new BufferedInputStream(new FileInputStream(file));
+                    String mimeType = URLConnection.guessContentTypeFromStream(inputStreamForFileMime);
+                    inputStreamForFileMime.close();
+                    printWriter.append("Content-Type: ").append(mimeType).append(LINE_FEED);
+                    printWriter.append("Content-Transfer-Encoding: binary").append(LINE_FEED);
+                    printWriter.flush();
 
-                    URL url = new URL(urlTo);
-                    connection = (HttpURLConnection) url.openConnection();
-
-                    connection.setDoInput(true);
-                    connection.setDoOutput(true);
-                    connection.setUseCaches(false);
-
-                    connection.setRequestMethod("POST");
-                    connection.setRequestProperty("Connection", "Keep-Alive");
-                    connection.setRequestProperty("User-Agent", "Android Multipart HTTP Client 1.0");
-                    connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-                    connection.setRequestProperty("Authorization", "JWT "+ jwtToken);
-
-                    outputStream = new DataOutputStream(connection.getOutputStream());
-                    outputStream.writeBytes(twoHyphens + boundary + lineEnd);
-                    outputStream.writeBytes("Content-Disposition: form-data; name=\"" + filefield + "\"; filename=\"" + q[idx] + "\"" + lineEnd);
-                    outputStream.writeBytes("Content-Type: " + fileMimeType + lineEnd);
-                    outputStream.writeBytes("Content-Transfer-Encoding: binary" + lineEnd);
-
-                    outputStream.writeBytes(lineEnd);
-
-                    bytesAvailable = fileInputStream.available();
-                    bufferSize = Math.min(bytesAvailable, maxBufferSize);
-                    buffer = new byte[bufferSize];
-
-                    bytesRead = fileInputStream.read(buffer, 0, bufferSize);
-                    while (bytesRead > 0) {
-                        outputStream.write(buffer, 0, bufferSize);
-                        bytesAvailable = fileInputStream.available();
-                        bufferSize = Math.min(bytesAvailable, maxBufferSize);
-                        bytesRead = fileInputStream.read(buffer, 0, bufferSize);
+                    fileInputStream = new FileInputStream(file);
+                    byte[] arrBy = new byte[4096];
+                    int len;
+                    while((len = fileInputStream.read(arrBy)) != -1){
+                        outputStream.write(arrBy , 0 , len);
                     }
-
-                    outputStream.writeBytes(lineEnd);
-
-                    // Upload POST Data
-                    Iterator<String> keys = parmas.keySet().iterator();
-                    while (keys.hasNext()) {
-                        String key = keys.next();
-                        String value = parmas.get(key);
-
-                        outputStream.writeBytes(twoHyphens + boundary + lineEnd);
-                        outputStream.writeBytes("Content-Disposition: form-data; name=\"" + key + "\"" + lineEnd);
-                        outputStream.writeBytes("Content-Type: text/plain" + lineEnd);
-                        outputStream.writeBytes(lineEnd);
-                        outputStream.writeBytes(value);
-                        outputStream.writeBytes(lineEnd);
-                    }
-
-                    outputStream.writeBytes(twoHyphens + boundary + twoHyphens + lineEnd);
-
-
-                    if (200 != connection.getResponseCode()) {
-                        throw new Exception("Failed to upload code:" + connection.getResponseCode() + " " + connection.getResponseMessage());
-                    }
-
-                    inputStream = connection.getInputStream();
-
-                    result = convertStreamToString(inputStream);
-
-                    fileInputStream.close();
-                    inputStream.close();
                     outputStream.flush();
                     outputStream.close();
 
-                    callback.onSuccess(result);
-                } catch (Exception e) {
-                    callback.onError(e.getClass().getCanonicalName());
+                    
+                    printWriter.append("--").append(boundary).append("--").append(LINE_FEED);
+                    printWriter.flush();
+                    printWriter.close();
+
+                    int responseCode = httpURLConnection.getResponseCode();
+                    if(responseCode/100 == 2){
+                        InputStream inputStream = httpURLConnection.getInputStream();
+                        String result = convertStreamToString(inputStream);
+                        if(result != null){
+                            callback.onSuccess(result);
+                        }else{
+                            callback.onSuccess("Null Result");
+                        }
+                        inputStream.close();
+                    } else{
+                      InputStream errorStream = httpURLConnection.getErrorStream();
+                      String result = convertStreamToString(errorStream);
+                      if(result != null){
+                          callback.onError(result);
+                      }else{
+                          callback.onError("Null result");
+                      }
+                      errorStream.close();
+                    }
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    if(httpURLConnection != null) {
+                        httpURLConnection.disconnect();
+                    }
+                    if(fileInputStream != null){
+                        try {
+                            fileInputStream.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
+
             }
         }).start();
     }
