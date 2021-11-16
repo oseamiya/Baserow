@@ -1,13 +1,11 @@
-# For a detailed info on this file and supported fields, check
-# out this link: https://github.com/ShreyashSaitwal/rush-cli/wiki/Metadata-File
-
----
-name: Baserow           # Caution: DO NOT change the name.
-description: Baserow is an open-source airtable alternative. This extension is developed and maintained by oseamiya. This extension is open-sourced at <a href="https://github.com/oseamiya/Baserow">Here</a>
+  ---
+name: Baserow
+description: Baserow is an open-source airtable alternative. This extension is developed and maintained by oseamiya. <br> <a href="https://github.com/oseamiya/Baserow">Source Code</a><br><a href="https://community.kodular.io/t/baserow-open-source-no-code-database/137886?u=oseamiya">Documentation</a>
+homepage: 'https://github.com/oseamiya/Baserow'
 
 version:
-  number: auto        # Auto increments version number when built with '-r' ('--release') flag.
-  name: '3.0'
+  number: 3
+  name: '3.1'
 
 authors:
   - oseamiya
