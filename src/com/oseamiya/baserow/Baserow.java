@@ -30,7 +30,14 @@ public class Baserow extends AndroidNonvisibleComponent {
     private String apiToken;
     private final Utility utility;
     private String accessUrl;
-
+    private int valueForAll = 1;
+    private int valueForAllRows = 1;
+    private String columnNames;
+    private final ArrayList<String> allValuesInList;
+    private final ArrayList<String> allResponsesInList;
+    private ArrayList<Object> allValuesInListRows;
+    private ArrayList<Object> allResponsesInListRows;
+    private int testValue = 0;
     public Baserow(ComponentContainer container) {
         super(container.$form());
         context = container.$context();
@@ -38,6 +45,11 @@ public class Baserow extends AndroidNonvisibleComponent {
         tableId = 26314;
         utility = new Utility();
         accessUrl = "https://api.baserow.io/";
+	columnNames = null;
+	allValuesInList = new ArrayList<String>();
+	allResponsesInList = new ArrayList<String>();
+        allValuesInListRows = new ArrayList<Object>();
+        allResponsesInListRows = new ArrayList<Object>();
     }
     @DesignerProperty()
     @SimpleProperty
@@ -60,7 +72,19 @@ public class Baserow extends AndroidNonvisibleComponent {
     }
     @SimpleEvent
     public void OnError(String errorMessage, String errorFrom){
-        EventDispatcher.dispatchEvent(this , "OnError" , errorMessage , errorFrom);
+        if(errorMessage.contains("Invalid page")){
+            if(columnNames != null) {
+                valueForAll = -1;
+                columnNames = null;
+                GotColumn(YailList.makeList(allValuesInList), YailList.makeList(allResponsesInList));
+            }else if(testValue == 1){
+                testValue = 2;
+                valueForAllRows = -1;
+                GotAllRows(YailList.makeList(allValuesInListRows), allValuesInListRows.size(), YailList.makeList(allResponsesInListRows));
+            }
+        }else{
+             EventDispatcher.dispatchEvent(this , "OnError" , errorMessage , errorFrom);
+	}
     }
     @SimpleEvent
     public void GotCell(String value , String response){
@@ -135,38 +159,60 @@ public class Baserow extends AndroidNonvisibleComponent {
     }
     @SimpleFunction
     public void GetColumn(String columnName, int page, int size){
-        String url = accessUrl + "api/database/rows/table/" + tableId + "/?user_field_names=true" + "&page=" + page + "&size=" + size;
-        utility.DoHttpRequest(url, apiToken, new Callback() {
-            @Override
-            public void onError(String error) {
-                activity.runOnUiThread(new Runnable() {
+        if(page != 0 && size != 0) {
+            if(size <= 200) {
+                String url = accessUrl + "api/database/rows/table/" + tableId + "/?user_field_names=true" + "&page=" + page + "&size=" + size;
+                utility.DoHttpRequest(url, apiToken, new Callback() {
                     @Override
-                    public void run() {
-                        OnError(error , "GetColumn");
+                    public void onError(String error) {
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                OnError(error, "GetColumn");
+                            }
+                        });
                     }
-                });
-            }
 
-            @Override
-            public void onSuccess(String result) {
-                activity.runOnUiThread(() -> {
-                    try {
-                        JSONObject jsonObject = new JSONObject(result);
-                        JSONArray jsonArray = jsonObject.getJSONArray("results");
-                        ArrayList<String> arrayList = new ArrayList<>();
-                        for(int i=0; i< jsonArray.length() ; i++){
-                            JSONObject jsonObject1 = jsonArray.getJSONObject(i);
-                            Object resultData = jsonObject1.get(columnName);
-                            arrayList.add(resultData.toString());
-                        }
-                        GotColumn(YailList.makeList(arrayList) , result);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                        OnError(e.getClass().getCanonicalName() , "GetColumn");
+                    @Override
+                    public void onSuccess(String result) {
+                        activity.runOnUiThread(() -> {
+                            try {
+                                JSONObject jsonObject = new JSONObject(result);
+                                JSONArray jsonArray = jsonObject.getJSONArray("results");
+                                ArrayList<String> arrayList = new ArrayList<>();
+                                for (int i = 0; i < jsonArray.length(); i++) {
+                                    JSONObject jsonObject1 = jsonArray.getJSONObject(i);
+                                    Object resultData = jsonObject1.get(columnName);
+                                    arrayList.add(resultData.toString());
+                                }
+                                if(columnNames == null) {
+                                    GotColumn(YailList.makeList(arrayList), result);
+                                }else{
+                                    allValuesInList.addAll(arrayList);
+                                    allResponsesInList.add(result);
+                                    if(valueForAll != -1){
+                                        valueForAll = valueForAll + 1;
+                                        //ArrayList<String> valuesList = new ArrayList<>();
+                                        GetColumn(columnNames, valueForAll, 200);
+                                    }
+                                }
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                                OnError(e.getClass().getCanonicalName(), "GetColumn");
+                            }
+                        });
                     }
                 });
+            }else {
+                HandleAll(columnName);
             }
-        });
+        }else{
+            throw new YailRuntimeError("Page or Size cannot be 0, try page 1 & size is max value you wanted to load", "RuntimeError");
+        }
+    }
+    private void HandleAll(String nameOfColumn){
+        columnNames = nameOfColumn;
+        GetColumn(columnNames, 1, 200);
     }
     @SimpleEvent
     public void GotAllRows(YailList values, int numberOfRows, String response){
@@ -174,53 +220,70 @@ public class Baserow extends AndroidNonvisibleComponent {
     }
     @SimpleFunction
     public void GetAllRows(int page, int size){
-        String url = accessUrl + "api/database/rows/table/" + tableId + "/?user_field_names=true" + "&page=" + page + "&size=" + size;
-        utility.DoHttpRequest(url, apiToken, new Callback() {
-            @Override
-            public void onError(String error) {
-                activity.runOnUiThread(new Runnable() {
+        if(page!=0 && size!=0) {
+            if(size <= 200) {
+                String url = accessUrl + "api/database/rows/table/" + tableId + "/?user_field_names=true" + "&page=" + page + "&size=" + size;
+                utility.DoHttpRequest(url, apiToken, new Callback() {
                     @Override
-                    public void run() {
-                        OnError(error , "GetAllRows");
-                    }
-                });
-            }
-
-            @Override
-            public void onSuccess(String result) {
-                activity.runOnUiThread(() -> {
-                    try {
-                        JSONObject jsonObject = new JSONObject(result);
-                        JSONArray jsonArray = jsonObject.getJSONArray("results");
-                        ArrayList<JSONObject> arrayList = new ArrayList<>();
-                        for(int i=0; i<jsonArray.length(); i++){
-                            JSONObject jsonObject1 = jsonArray.getJSONObject(i);
-                            arrayList.add(jsonObject1);
-                        }
-                        ArrayList<String> arrayList1 = new ArrayList<>();
-                        Iterator<String> iterator = arrayList.get(0).keys();
-                        for(Iterator<String> it = iterator ; it.hasNext();){
-                            arrayList1.add(it.next());
-                        }
-                        arrayList1.remove("id");
-                        arrayList1.remove("order");
-                        ArrayList<YailList> arrayLists = new ArrayList<>();
-                        for(JSONObject jsonObject1 : arrayList){
-                            ArrayList<String> arrayList2 = new ArrayList<>();
-                            for(String arr : arrayList1){
-                                arrayList2.add(jsonObject1.get(arr).toString());
+                    public void onError(String error) {
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                OnError(error, "GetAllRows");
                             }
-                            arrayLists.add(YailList.makeList(arrayList2));
-                        }
-                        GotAllRows(YailList.makeList(arrayLists) , arrayLists.size() , result);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
+                        });
                     }
 
-
+                    @Override
+                    public void onSuccess(String result) {
+                        activity.runOnUiThread(() -> {
+                            try {
+                                JSONObject jsonObject = new JSONObject(result);
+                                JSONArray jsonArray = jsonObject.getJSONArray("results");
+                                ArrayList<JSONObject> arrayList = new ArrayList<>();
+                                for (int i = 0; i < jsonArray.length(); i++) {
+                                    JSONObject jsonObject1 = jsonArray.getJSONObject(i);
+                                    arrayList.add(jsonObject1);
+                                }
+                                ArrayList<String> arrayList1 = new ArrayList<>();
+                                Iterator<String> iterator = arrayList.get(0).keys();
+                                for (Iterator<String> it = iterator; it.hasNext(); ) {
+                                    arrayList1.add(it.next());
+                                }
+                                arrayList1.remove("id");
+                                arrayList1.remove("order");
+                                ArrayList<YailList> arrayLists = new ArrayList<>();
+                                for (JSONObject jsonObject1 : arrayList) {
+                                    ArrayList<String> arrayList2 = new ArrayList<>();
+                                    for (String arr : arrayList1) {
+                                        arrayList2.add(jsonObject1.get(arr).toString());
+                                    }
+                                    arrayLists.add(YailList.makeList(arrayList2));
+                                }
+                                if(testValue != 1) {
+                                    GotAllRows(YailList.makeList(arrayLists), arrayLists.size(), result);
+                                }else{
+                                    // size is maximum than 200
+                                    allValuesInListRows.addAll(arrayLists);
+                                    allResponsesInListRows.add(result);
+                                    if(valueForAllRows != -1){
+                                        valueForAllRows = valueForAllRows + 1;
+                                        GetAllRows(valueForAllRows, 200);
+                                    }
+                                }
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        });
+                    }
                 });
+            }else{
+                testValue = 1;
+		GetAllRows(1,200);
             }
-        });
+        }else{
+            throw new YailRuntimeError("Page or Size cannot be 0, try page 1 & size is max value you wanted to load", "RuntimeError");
+        }
     }
     @SimpleEvent
     public void GotRow(YailList values , String response){
