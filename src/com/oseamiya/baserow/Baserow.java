@@ -40,6 +40,11 @@ public class Baserow extends AndroidNonvisibleComponent {
     private int testValue = 0;
     private int moreSizeOfGetColumn = 1; 
     private int moreSizeOfGetAllRows = 1; 
+    // Added after version 3.2 of this extension
+    private int countForGotAllRows = 0;
+    private ArrayList<String> idListForGotAllRows;
+    private int countForGotColumn = 0;
+    private ArrayList<String> idListForGotColumn;
     public Baserow(ComponentContainer container) {
         super(container.$form());
         context = container.$context();
@@ -52,6 +57,9 @@ public class Baserow extends AndroidNonvisibleComponent {
 	allResponsesInList = new ArrayList<String>();
         allValuesInListRows = new ArrayList<Object>();
         allResponsesInListRows = new ArrayList<Object>();
+	// Added after version 3.2 of this extension, to give all row ids in list to users <--@author-- oseamiya-->
+	idListForGotAllRows = new ArrayList<String>();
+        idListForGotColumn = new ArrayList<String>();
     }
     @DesignerProperty()
     @SimpleProperty
@@ -78,11 +86,11 @@ public class Baserow extends AndroidNonvisibleComponent {
             if(columnNames != null) {
                 valueForAll = 1;
                 columnNames = null;
-                GotColumn(YailList.makeList(allValuesInList), YailList.makeList(allResponsesInList));
+                GotColumn(YailList.makeList(allValuesInList), countForGotColumn, YailList.makeList(idListForGotColumn),YailList.makeList(allResponsesInList));
             }else if(testValue == 1){
                 testValue = 2;
                 valueForAllRows = -1;
-                GotAllRows(YailList.makeList(allValuesInListRows), allValuesInListRows.size(), YailList.makeList(allResponsesInListRows));
+                GotAllRows(YailList.makeList(allValuesInListRows),countForGotAllRows, YailList.makeList(idListForGotAllRows), YailList.makeList(allResponsesInListRows));
             }
         }else{
              EventDispatcher.dispatchEvent(this , "OnError" , errorMessage , errorFrom);
@@ -156,11 +164,13 @@ public class Baserow extends AndroidNonvisibleComponent {
         });
     }
     @SimpleEvent
-    public void GotColumn(YailList values, String response){
-        EventDispatcher.dispatchEvent(this , "GotColumn" , values , response);
+    public void GotColumn(YailList values, int counts, YailList rowIds, Object response){
+        EventDispatcher.dispatchEvent(this , "GotColumn" , values ,counts, rowIds, response);
 	allValuesInList.clear();
         allResponsesInList.clear();
+	idListForGotColumn.clear();
         columnNames = null;
+	countForGotColumn = 0;
         Log.d("GotColumn", "All values saved in arraylist is cleared");
     }
     @SimpleFunction
@@ -185,17 +195,22 @@ public class Baserow extends AndroidNonvisibleComponent {
                             try {
                                 JSONObject jsonObject = new JSONObject(result);
                                 JSONArray jsonArray = jsonObject.getJSONArray("results");
+				countForGotColumn = jsonObject.getInt("count");
                                 ArrayList<String> arrayList = new ArrayList<>();
+				ArrayList<String> arrayList2 = new ArrayList<>(); // This will store row ids for the column.
                                 for (int i = 0; i < jsonArray.length(); i++) {
                                     JSONObject jsonObject1 = jsonArray.getJSONObject(i);
                                     Object resultData = jsonObject1.get(columnName);
+			            Object rowIdsDatas = jsonObject1.get("id");
                                     arrayList.add(resultData.toString());
+			            arrayList2.add(rowIdsDatas.toString());
                                 }
                                 if(columnNames == null) {
-                                    GotColumn(YailList.makeList(arrayList), result);
+                                    GotColumn(YailList.makeList(arrayList),countForGotColumn, YailList.makeList(arrayList2),  YailList.makeList(new String[]{result}));
                                 }else{
                                     allValuesInList.addAll(arrayList);
                                     allResponsesInList.add(result);
+				    idListForGotColumn.addAll(arrayList2);
                                     if(valueForAll != -1){
                                         valueForAll = valueForAll + 1;
                                         if(moreSizeOfGetColumn > allValuesInList.size()){
@@ -203,11 +218,13 @@ public class Baserow extends AndroidNonvisibleComponent {
                                             GetColumn(columnNames, valueForAll, 200);
                                         }else{
                                             ArrayList<String> allValuesInList1 = new ArrayList<>(); // That filter out the data if data is loaded more than of size
+				            ArrayList<String> idListForGotColumn1 = new ArrayList<>();
                                             for(int i=0; i<moreSizeOfGetColumn; i++){
                                                 //Log.d("Index for removing extra values", String.valueOf(i));
                                                 allValuesInList1.add(allValuesInList.get(i));
+						idListForGotColumn1.add(idListForGotColumn.get(i));
                                             }
-                                            GotColumn(YailList.makeList(allValuesInList1), YailList.makeList(allResponsesInList));
+                                            GotColumn(YailList.makeList(allValuesInList1), countForGotColumn, YailList.makeList(idListForGotColumn1),YailList.makeList(allResponsesInList));
                                         }
                                         
                                     }
@@ -219,10 +236,12 @@ public class Baserow extends AndroidNonvisibleComponent {
                         });
                     }
                 });
-            }else {
+            }else if(page == 1){
 		moreSizeOfGetColumn = size;
                 valueForAll = 1;
                 HandleAll(columnName);
+            }else{
+                throw new YailRuntimeError("Your page should be 1 if your size is greater than 200", "RuntimeError");
             }
         }else{
             throw new YailRuntimeError("Page or Size cannot be 0, try page 1 & size is max value you wanted to load", "RuntimeError");
@@ -233,11 +252,13 @@ public class Baserow extends AndroidNonvisibleComponent {
         GetColumn(columnNames, 1, 200);
     }
     @SimpleEvent
-    public void GotAllRows(YailList values, int numberOfRows, String response){
-        EventDispatcher.dispatchEvent(this , "GotAllRows" , values, numberOfRows , response);
+    public void GotAllRows(YailList values, int counts, YailList rowIds, Object response){
+        EventDispatcher.dispatchEvent(this , "GotAllRows" , values, counts, rowIds, response);
 	testValue = -1;
         allValuesInListRows.clear();
         allResponsesInListRows.clear();
+	countForGotAllRows=0;
+        idListForGotAllRows.clear();
         Log.d("GotAllRows", "All values saved in arraylist is cleared");
     }
     @SimpleFunction
@@ -262,10 +283,14 @@ public class Baserow extends AndroidNonvisibleComponent {
                             try {
                                 JSONObject jsonObject = new JSONObject(result);
                                 JSONArray jsonArray = jsonObject.getJSONArray("results");
+				countForGotAllRows = jsonObject.getInt("count"); // it is total no. of rows available in your table
+				ArrayList<String> arrayListForRowIds = new ArrayList<>();
                                 ArrayList<JSONObject> arrayList = new ArrayList<>();
                                 for (int i = 0; i < jsonArray.length(); i++) {
                                     JSONObject jsonObject1 = jsonArray.getJSONObject(i);
                                     arrayList.add(jsonObject1);
+			            Object rowIdsDatas = jsonObject1.get("id");
+                                    arrayListForRowIds.add(rowIdsDatas.toString());
                                 }
                                 ArrayList<String> arrayList1 = new ArrayList<>();
                                 Iterator<String> iterator = arrayList.get(0).keys();
@@ -283,11 +308,12 @@ public class Baserow extends AndroidNonvisibleComponent {
                                     arrayLists.add(YailList.makeList(arrayList2));
                                 }
                                 if(testValue != 1) {
-                                    GotAllRows(YailList.makeList(arrayLists), arrayLists.size(), result);
+                                    GotAllRows(YailList.makeList(arrayLists), countForGotAllRows, YailList.makeList(arrayListForRowIds) ,YailList.makeList(new String[]{result}));
                                 }else{
-                                    // size is maximum than 200
+                                    // size is maximum than 200, this is only executed if page is 1 
                                     allValuesInListRows.addAll(arrayLists);
                                     allResponsesInListRows.add(result);
+				    idListForGotAllRows.addAll(arrayListForRowIds);
                                     if(valueForAllRows != -1){
                                         valueForAllRows = valueForAllRows + 1;
                                         if(moreSizeOfGetAllRows > allValuesInListRows.size()){
@@ -295,11 +321,13 @@ public class Baserow extends AndroidNonvisibleComponent {
                                             GetAllRows(valueForAllRows, 200);
                                         }else{
                                             ArrayList<Object> allValuesInList1 = new ArrayList<>(); // That filter out the data if data is loaded more than of size
+				            ArrayList<String> idListForGotAllRows1 = new ArrayList<>();
                                             for(int i=0; i<moreSizeOfGetAllRows; i++){
                                                 //Log.d("Index for removing extra values", String.valueOf(i));
                                                 allValuesInList1.add(allValuesInListRows.get(i));
+						idListForGotAllRows1.add(idListForGotAllRows.get(i));
                                             }
-                                            GotAllRows(YailList.makeList(allValuesInList1), allValuesInList1.size(), YailList.makeList(allResponsesInListRows));
+                                            GotAllRows(YailList.makeList(allValuesInList1), countForGotAllRows, YailList.makeList(idListForGotAllRows1) ,YailList.makeList(allResponsesInListRows));
                                         }
                                     }
                                 }
@@ -309,11 +337,13 @@ public class Baserow extends AndroidNonvisibleComponent {
                         });
                     }
                 });
-            }else{
+            }else if(page == 1){
                 testValue = 1;
 		moreSizeOfGetAllRows = size;
                 valueForAllRows = 1;
 		GetAllRows(1,200);
+            }else{
+                throw new YailRuntimeError("Your page should be 1 if your size is greater than 200", "RuntimeError");
             }
         }else{
             throw new YailRuntimeError("Page or Size cannot be 0, try page 1 & size is max value you wanted to load", "RuntimeError");
