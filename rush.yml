@@ -1,35 +1,22 @@
-  ---
+---
 name: Baserow
-description: Baserow is an open-source airtable alternative. This extension is developed and maintained by oseamiya. <br> <a href="https://github.com/oseamiya/Baserow">Source Code</a><br><a href="https://community.kodular.io/t/baserow-open-source-no-code-database/137886?u=oseamiya">Documentation</a>
+description: Baserow is an open-source airtable alternative. This extension is developed and maintained by oseamiya. <br><a href="https://github.com/oseamiya/Baserow">Source Code</a><br><a href="https://community.kodular.io/t/baserow-open-source-no-code-database/137886?u=oseamiya">Documentation</a>
 homepage: 'https://github.com/oseamiya/Baserow'
 
 version:
-  number: 3
-  name: '3.2'
+  number: 4
+  name: '4.1'
 
 authors:
   - oseamiya
 
 build:
-  # If enabled, you will be able to use Java 8 language features in your extension.
-  desugar:
-    enable: true
-    desugar_deps: false
-
-  # Optimizes your extension on every release build.
   release:
     optimize: true
 
+  desugar:
+    enable: false
+    desugar_deps: false
+
 assets:
-  # Extension icon
   icon: icon.png
-
-deps:
-  - org.json.jar
-  # Extension asset(s)
-  # other:
-  #   - my_awesome_asset.anything
-
-# Dependencies declared here should be present in the "deps" directory.
-# deps:
-#   - my_awesome_library.jar
