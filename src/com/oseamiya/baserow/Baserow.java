@@ -35,35 +35,34 @@ public class Baserow extends AndroidNonvisibleComponent {
      */
 
     // These are the global variables required for GetAllRows Method
-    int sizeForGetAllRows = 0;
-    int whichPageIAmAtForGetAllRows = 1;
-    int countForGetAllRows = 0;
-    ArrayList<String> listOfRowIdsForGetAllRows = new ArrayList<>();
-    ArrayList<YailList> listOfValuesForGetAllRows = new ArrayList<>();
-    ArrayList<String> nameOfColumnsForGetAllRows = new ArrayList<>();
-    ArrayList<String> listOfResponsesForGetAllRows = new ArrayList<>();
-    String urlOfGetAllRows;
-    boolean isFirstTimeForGetAllRows = true;
+    private int sizeForGetAllRows = 0;
+    private int whichPageIAmAtForGetAllRows = 1;
+    private int countForGetAllRows = 0;
+    private final ArrayList<String> listOfRowIdsForGetAllRows;
+    private final ArrayList<YailList> listOfValuesForGetAllRows;
+    private final ArrayList<String> nameOfColumnsForGetAllRows;
+    private final ArrayList<String> listOfResponsesForGetAllRows;
+    private boolean isFirstTimeForGetAllRows = true;
 
     // These are the global variables required for GetColumn Method
-    int sizeForGetColumn = 0;
-    int whichPageIAmAtForGetColumn = 1;
-    int countForGetColumn = 0;
-    ArrayList<String> listOfRowIdsForGetColumn = new ArrayList<>();
-    ArrayList<YailList> listOfValuesForGetColumn = new ArrayList<>();
-    ArrayList<String> nameOfColumnsForGetColumn = new ArrayList<>();
-    ArrayList<String> listOfResponsesForGetColumn = new ArrayList<>();
-    String urlOfGetColumn;
-    boolean isFirstTimeForGetColumn = true;
+    private int sizeForGetColumn = 0;
+    private int whichPageIAmAtForGetColumn = 1;
+    private int countForGetColumn = 0;
+    private final ArrayList<String> listOfRowIdsForGetColumn;
+    private final ArrayList<YailList> listOfValuesForGetColumn;
+    private final ArrayList<String> nameOfColumnsForGetColumn;
+    private final ArrayList<String> listOfResponsesForGetColumn;
+    private String urlOfGetColumn;
+    private boolean isFirstTimeForGetColumn = true;
 
     // These are global variables required for search and order
-    String search = "";
-    String order = "";
+    private String search = "";
+    private String order = "";
     // These are global variables required for filters and type
-    ArrayList<String> fieldIdsOfFilter = new ArrayList<>();
-    ArrayList<String> valuesOfFilter = new ArrayList<>();
-    ArrayList<String> filtersOfFilter = new ArrayList<>();
-    String filterType = "";
+    private final ArrayList<String> fieldIdsOfFilter;
+    private final ArrayList<String> valuesOfFilter;
+    private final ArrayList<String> filtersOfFilter;
+    private String filterType = "";
 
     public Baserow(ComponentContainer container) {
         super(container.$form());
@@ -72,6 +71,20 @@ public class Baserow extends AndroidNonvisibleComponent {
         tableId = 26314;
         utility = new Utility();
         accessUrl = "https://api.baserow.io/";
+
+        listOfRowIdsForGetColumn = new ArrayList<>();
+        listOfValuesForGetColumn = new ArrayList<>();
+        nameOfColumnsForGetColumn = new ArrayList<>();
+        listOfResponsesForGetColumn = new ArrayList<>();
+
+        listOfRowIdsForGetAllRows = new ArrayList<>();
+        listOfValuesForGetAllRows = new ArrayList<>();
+        nameOfColumnsForGetAllRows = new ArrayList<>();
+        listOfResponsesForGetAllRows = new ArrayList<>();
+
+        fieldIdsOfFilter = new ArrayList<>();
+        valuesOfFilter = new ArrayList<>();
+        filtersOfFilter = new ArrayList<>();
     }
 
     @DesignerProperty()
@@ -114,11 +127,11 @@ public class Baserow extends AndroidNonvisibleComponent {
     }
 
     @SimpleFunction
-    public void GetCell(int rowId, String columnName) {
+    public void GetCell(int rowId, final String columnName) {
         String url = accessUrl + "api/database/rows/table/" + tableId + "/" + rowId + "/?user_field_names=true";
         utility.DoHttpRequest(url, apiToken, new Callback() {
             @Override
-            public void onError(String error) {
+            public void onError(final String error) {
                 activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -128,15 +141,18 @@ public class Baserow extends AndroidNonvisibleComponent {
             }
 
             @Override
-            public void onSuccess(String result) {
-                activity.runOnUiThread(() -> {
-                    try {
-                        JSONObject jsonObject = new JSONObject(result);
-                        Object object = jsonObject.get(columnName);
-                        GotCell(object.toString(), result);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                        OnError(e.getClass().getCanonicalName(), "GetCell");
+            public void onSuccess(final String result) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            JSONObject jsonObject = new JSONObject(result);
+                            Object object = jsonObject.get(columnName);
+                            GotCell(object.toString(), result);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                            OnError(e.getClass().getCanonicalName(), "GetCell");
+                        }
                     }
                 });
 
@@ -149,30 +165,38 @@ public class Baserow extends AndroidNonvisibleComponent {
         String urlRequired = accessUrl + "api/database/fields/table/" + Integer.toString(tableId) + "/";
         utility.DoHttpRequest(urlRequired, apiToken, new Callback() {
             @Override
-            public void onError(String error) {
-                activity.runOnUiThread(() -> OnError(error, "GetListFields"));
+            public void onError(final String error) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        OnError(error, "GetListFields");
+                    }
+                });
             }
 
             @Override
-            public void onSuccess(String result) {
-                activity.runOnUiThread(() -> {
-                    ArrayList<String> nameList = new ArrayList<>();
-                    ArrayList<String> typeList = new ArrayList<>();
-                    ArrayList<Integer> idList = new ArrayList<>();
-                    ArrayList<Boolean> isPrimaryList = new ArrayList<>();
-                    try {
-                        JSONArray jsonArray = new JSONArray(result);
-                        for (int i = 0; i < jsonArray.length(); i++) {
-                            JSONObject jsonObject = jsonArray.getJSONObject(i);
-                            nameList.add(jsonObject.getString("name"));
-                            typeList.add(jsonObject.getString("type"));
-                            idList.add(jsonObject.getInt("id"));
-                            isPrimaryList.add(jsonObject.getBoolean("primary"));
+            public void onSuccess(final String result) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        ArrayList<String> nameList = new ArrayList<>();
+                        ArrayList<String> typeList = new ArrayList<>();
+                        ArrayList<Integer> idList = new ArrayList<>();
+                        ArrayList<Boolean> isPrimaryList = new ArrayList<>();
+                        try {
+                            JSONArray jsonArray = new JSONArray(result);
+                            for (int i = 0; i < jsonArray.length(); i++) {
+                                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                                nameList.add(jsonObject.getString("name"));
+                                typeList.add(jsonObject.getString("type"));
+                                idList.add(jsonObject.getInt("id"));
+                                isPrimaryList.add(jsonObject.getBoolean("primary"));
+                            }
+                        } catch (JSONException e) {
+                            e.printStackTrace();
                         }
-                    } catch (JSONException e) {
-                        e.printStackTrace();
+                        OnFieldsListed(YailList.makeList(idList), YailList.makeList(nameList), YailList.makeList(typeList), YailList.makeList(isPrimaryList), tableId);
                     }
-                    OnFieldsListed(YailList.makeList(idList), YailList.makeList(nameList), YailList.makeList(typeList), YailList.makeList(isPrimaryList), tableId);
                 });
             }
         });
@@ -188,7 +212,7 @@ public class Baserow extends AndroidNonvisibleComponent {
     }
 
     @SimpleFunction
-    public void GetColumn(String columnName, int page, int size) {
+    public void GetColumn(final String columnName, int page, int size) {
         if (page != 0 && size != 0) {
             StringBuilder stringBuilder = new StringBuilder();
             if (isFirstTimeForGetColumn) {
@@ -219,7 +243,7 @@ public class Baserow extends AndroidNonvisibleComponent {
             urlOfGetColumn = stringBuilder.toString();
             utility.DoHttpRequest(urlOfGetColumn, apiToken, new Callback() {
                 @Override
-                public void onError(String error) {
+                public void onError(final String error) {
                     activity.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -230,7 +254,7 @@ public class Baserow extends AndroidNonvisibleComponent {
                 }
 
                 @Override
-                public void onSuccess(String result) {
+                public void onSuccess(final String result) {
                     activity.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -343,10 +367,10 @@ public class Baserow extends AndroidNonvisibleComponent {
             if (!this.filterType.equals("")) {
                 stringBuilder.append("&filter_type=").append(this.filterType);
             }
-            urlOfGetAllRows = stringBuilder.toString();
+            String urlOfGetAllRows = stringBuilder.toString();
             utility.DoHttpRequest(urlOfGetAllRows, apiToken, new Callback() {
                 @Override
-                public void onError(String error) {
+                public void onError(final String error) {
                     activity.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -357,7 +381,7 @@ public class Baserow extends AndroidNonvisibleComponent {
                 }
 
                 @Override
-                public void onSuccess(String result) {
+                public void onSuccess(final String result) {
                     activity.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -455,26 +479,34 @@ public class Baserow extends AndroidNonvisibleComponent {
         String url = accessUrl + "api/database/rows/table/" + tableId + "/" + rowId + "/?user_field_names=true";
         utility.DoHttpRequest(url, apiToken, new Callback() {
             @Override
-            public void onError(String error) {
-                activity.runOnUiThread(() -> OnError(error, "GetRow"));
+            public void onError(final String error) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        OnError(error, "GetRow");
+                    }
+                });
             }
 
             @Override
-            public void onSuccess(String result) {
-                activity.runOnUiThread(() -> {
-                    try {
-                        JSONObject jsonObject = new JSONObject(result);
-                        Iterator<String> iterator = jsonObject.keys();
-                        ArrayList<String> arrayList = new ArrayList<>();
-                        for (Iterator<String> it = iterator; it.hasNext(); ) {
-                            arrayList.add(jsonObject.getString(it.next()));
+            public void onSuccess(final String result) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            JSONObject jsonObject = new JSONObject(result);
+                            Iterator<String> iterator = jsonObject.keys();
+                            ArrayList<String> arrayList = new ArrayList<>();
+                            while (iterator.hasNext()) {
+                                arrayList.add(jsonObject.getString(iterator.next()));
+                            }
+                            arrayList.remove(arrayList.get(0));
+                            arrayList.remove(arrayList.get(0)); // Actually i did it two times so that first two word of origin arraylist removes
+                            GotRow(YailList.makeList(arrayList), result);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                            OnError(e.getClass().getCanonicalName(), "GetRow");
                         }
-                        arrayList.remove(arrayList.get(0));
-                        arrayList.remove(arrayList.get(0)); // Actually i did it two times so that first two word of origin arraylist removes
-                        GotRow(YailList.makeList(arrayList), result);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                        OnError(e.getClass().getCanonicalName(), "GetRow");
                     }
                 });
             }
@@ -499,13 +531,23 @@ public class Baserow extends AndroidNonvisibleComponent {
         stringBuilder.replace(stringBuilder.length() - 1, stringBuilder.length(), "}");
         utility.PostHttpRequest(url, apiToken, stringBuilder.toString(), "POST", "", new Callback() {
             @Override
-            public void onError(String error) {
-                activity.runOnUiThread(() -> OnError(error, "CreateRow"));
+            public void onError(final String error) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        OnError(error, "CreateRow");
+                    }
+                });
             }
 
             @Override
-            public void onSuccess(String result) {
-                activity.runOnUiThread(() -> RowCreated(result));
+            public void onSuccess(final String result) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        RowCreated(result);
+                    }
+                });
             }
         });
     }
@@ -528,13 +570,23 @@ public class Baserow extends AndroidNonvisibleComponent {
         stringBuilder.replace(stringBuilder.length() - 1, stringBuilder.length(), "}");
         utility.PostHttpRequest(url, apiToken, stringBuilder.toString(), "PATCH", "", new Callback() {
             @Override
-            public void onError(String error) {
-                activity.runOnUiThread(() -> OnError(error, "UpdateRow"));
+            public void onError(final String error) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        OnError(error, "UpdateRow");
+                    }
+                });
             }
 
             @Override
-            public void onSuccess(String result) {
-                activity.runOnUiThread(() -> RowUpdated(result));
+            public void onSuccess(final String result) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        RowUpdated(result);
+                    }
+                });
             }
         });
     }
@@ -549,7 +601,7 @@ public class Baserow extends AndroidNonvisibleComponent {
         String url = accessUrl + "api/database/rows/table/" + tableId + "/" + rowId + "/move/?user_field_names=true&before_id=" + beforeId;
         utility.PostHttpRequest(url, apiToken, "", "PATCH", "", new Callback() {
             @Override
-            public void onError(String error) {
+            public void onError(final String error) {
                 activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -559,8 +611,13 @@ public class Baserow extends AndroidNonvisibleComponent {
             }
 
             @Override
-            public void onSuccess(String result) {
-                activity.runOnUiThread(() -> RowMoved(result));
+            public void onSuccess(final String result) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        RowMoved(result);
+                    }
+                });
             }
         });
     }
@@ -571,17 +628,27 @@ public class Baserow extends AndroidNonvisibleComponent {
     }
 
     @SimpleFunction
-    public void DeleteRow(int rowId) {
+    public void DeleteRow(final int rowId) {
         String url = accessUrl + "api/database/rows/table/" + tableId + "/" + rowId + "/";
         utility.PostHttpRequest(url, apiToken, "", "DELETE", "", new Callback() {
             @Override
-            public void onError(String error) {
-                activity.runOnUiThread(() -> OnError(error, "DeleteRow"));
+            public void onError(final String error) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        OnError(error, "DeleteRow");
+                    }
+                });
             }
 
             @Override
-            public void onSuccess(String result) {
-                activity.runOnUiThread(() -> RowDeleted("Success Deletion of " + rowId));
+            public void onSuccess(final String result) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        RowDeleted("Success Deletion of " + rowId);
+                    }
+                });
             }
         });
     }
@@ -632,7 +699,7 @@ public class Baserow extends AndroidNonvisibleComponent {
         String jsonWithUserAndPass = "{" + "\"username\"" + ":" + "\"" + username + "\"," + "\"password\": \"" + password + "\"}";
         utility.PostHttpRequest(url, apiToken, jsonWithUserAndPass, "POST", "", new Callback() {
             @Override
-            public void onError(String error) {
+            public void onError(final String error) {
                 activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -642,7 +709,7 @@ public class Baserow extends AndroidNonvisibleComponent {
             }
 
             @Override
-            public void onSuccess(String result) {
+            public void onSuccess(final String result) {
                 activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -666,7 +733,7 @@ public class Baserow extends AndroidNonvisibleComponent {
         String jsonWithToken = "{" + "\"token\":" + "\"" + token + "\"" + "}";
         utility.PostHttpRequest(url, apiToken, jsonWithToken, "POST", "", new Callback() {
             @Override
-            public void onError(String error) {
+            public void onError(final String error) {
                 activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -676,7 +743,7 @@ public class Baserow extends AndroidNonvisibleComponent {
             }
 
             @Override
-            public void onSuccess(String result) {
+            public void onSuccess(final String result) {
                 activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -701,12 +768,12 @@ public class Baserow extends AndroidNonvisibleComponent {
     }
 
     @SimpleFunction
-    public void VerifyToken(String token) {
+    public void VerifyToken(final String token) {
         String url = accessUrl + "api/user/token-verify/";
         String jsonWithToken = "{" + "\"token\":" + "\"" + token + "\"" + "}";
         utility.PostHttpRequest(url, apiToken, jsonWithToken, "POST", "", new Callback() {
             @Override
-            public void onError(String error) {
+            public void onError(final String error) {
                 activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -716,7 +783,7 @@ public class Baserow extends AndroidNonvisibleComponent {
             }
 
             @Override
-            public void onSuccess(String result) {
+            public void onSuccess(final String result) {
                 activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -749,7 +816,7 @@ public class Baserow extends AndroidNonvisibleComponent {
         String jsonFileUrl = "{\"url\":\"" + fileUrl + "\"}";
         utility.PostHttpRequest(url, "", jsonFileUrl, "POST", token, new Callback() {
             @Override
-            public void onError(String error) {
+            public void onError(final String error) {
                 activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -759,7 +826,7 @@ public class Baserow extends AndroidNonvisibleComponent {
             }
 
             @Override
-            public void onSuccess(String result) {
+            public void onSuccess(final String result) {
                 activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
