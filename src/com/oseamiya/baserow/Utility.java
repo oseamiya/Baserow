@@ -6,7 +6,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
 public class Utility {
-    public void DoHttpRequest(String urls, String token, Callback callback) {
+    public void DoHttpRequest(final String urls, final String token, final Callback callback) {
         (new Thread(new Runnable() {
             @Override
             public void run() {
@@ -49,7 +49,7 @@ public class Utility {
 
     }
 
-    public void PostHttpRequest(String urls, String token, String jsonString, String method, String jwtToken, Callback callback) {
+    public void PostHttpRequest(final String urls, final String token, final String jsonString, final String method, final String jwtToken, final Callback callback) {
         (new Thread(new Runnable() {
             @Override
             public void run() {
